@@ -45,7 +45,7 @@ jobs:
       # Step 4: Run unit tests with Valgrind
       - name: Run unit tests with Valgrind
         run: |
-          make run_tests
+          make run
         continue-on-error: true  # Continue even if Valgrind finds issues
 
       # Step 5: Save Valgrind output as an artifact
