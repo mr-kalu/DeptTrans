@@ -45,7 +45,6 @@ jobs:
       # Step 4: Run unit tests with Valgrind
       - name: Run unit tests with Valgrind
         run: |
-          cd System
           make unit_run
         continue-on-error: true  # Continue even if Valgrind finds issues
 
