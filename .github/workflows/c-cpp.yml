@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["Development", "main"]  # Focus on essential branches
+    branches: ["main"]  # Focus on essential branches
   pull_request:
-    branches: ["Development", "main"]
+    branches: ["main"]
 
 jobs:
   lint:
