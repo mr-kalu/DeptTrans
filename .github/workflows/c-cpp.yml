@@ -8,14 +8,16 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    
     steps:
     - uses: actions/checkout@v4
-    - name: main
-      run: ./main.cpp
-    - name: make
+    
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y g++ make
+    
+    - name: Compile with Make
       run: make
-    - name: make run
+    
+    - name: Run the program
       run: make run
