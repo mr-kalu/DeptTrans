@@ -1,3 +1,5 @@
+ url=https://github.com/mr-kalu/DeptTrans/blob/33f7685891e4eb3c746a083010a31b8f575b01b2/.github/workflows/c-cpp.yml
+```yaml
 name: C/C++ CI
 
 on:
@@ -7,17 +9,86 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        compiler: [gcc, clang]   # optional: test with multiple compilers
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y g++ make
-    
-    - name: Compile with Make
-      run: make
-    
-    - name: Run the program
-      run: make run
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake lcov
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang
+        fi
+
+    - name: Configure (CMake) or prepare build
+      run: |
+        # If your repo uses a Makefile and not CMake, remove this step.
+        # This example configures a build directory if you use CMake:
+        if [ -f CMakeLists.txt ]; then
+          mkdir -p build
+          cd build
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            CC=clang CXX=clang++ cmake ..
+          else
+            CC=gcc CXX=g++ cmake ..
+          fi
+        fi
+
+    - name: Build
+      run: |
+        # prefer building via Makefile if present, otherwise use cmake --build
+        if [ -f Makefile ]; then
+          make -j$(nproc)
+        elif [ -d build ]; then
+          cmake --build build -- -j$(nproc)
+        else
+          echo "No Makefile or CMake build directory found; adjust the workflow to your build system"
+          exit 1
+        fi
+
+    - name: Run tests
+      id: run-tests
+      run: |
+        # 1) If you have a target `make test` or `ctest`, prefer calling that.
+        if make -n test 2>/dev/null; then
+          echo "Running 'make test'"
+          make test
+        elif [ -d build ]; then
+          echo "Running ctest (in build directory)"
+          cd build
+          # run ctest and generate JUnit-style xml if you use CTest:
+          ctest --output-on-failure --no-compress-output -T Test || true
+        else
+          # 2) If you use GoogleTest, produce an XML report:
+          # adjust ./tests/my_tests to your test binary path
+          if [ -x ./tests/my_tests ]; then
+            ./tests/my_tests --gtest_output=xml:report.xml || true
+          else
+            echo "No test target found. Add a 'test' Make target, CTest configuration, or adjust the test command in this workflow."
+            exit 1
+          fi
+        fi
+
+    - name: Upload test results (artifact)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          build/Testing        # CTest structured results directory (if used)
+          report.xml           # GoogleTest xml
+          *.xml
+
+    - name: Fail workflow if tests failed
+      if: steps.run-tests.outcome != 'success'
+      run: |
+        # If test step produced a non-zero exit code, this step will run and fail the job.
+        # Adjust the condition above if you prefer different behavior.
+        echo "One or more tests failed."
+        exit 1
